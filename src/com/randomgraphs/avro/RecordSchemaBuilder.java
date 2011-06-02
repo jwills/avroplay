@@ -13,6 +13,10 @@ import org.codehaus.jackson.node.IntNode;
 import org.codehaus.jackson.node.LongNode;
 import org.codehaus.jackson.node.TextNode;
 
+/**
+ * Utility class for defining an Avro {@link Schema} for a record dynamically.
+ *
+ */
 public class RecordSchemaBuilder {
 
 	private static final Schema STRING_SCHEMA = Schema.create(Type.STRING);

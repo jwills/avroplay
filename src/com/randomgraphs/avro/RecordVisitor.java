@@ -10,8 +10,16 @@ import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.IndexedRecord;
 import org.codehaus.jackson.JsonNode;
 
+/**
+ * Implementation of the Visitor pattern for Avro {@link IndexedRecord}
+ * instances.
+ *
+ */
 public class RecordVisitor {
 
+	/**
+	 * The Visitor interface that clients should implement.
+	 */
 	public static interface Visitor {
 		void visitInt(Field field, Integer value);
 		void visitLong(Field field, Long value);
@@ -48,7 +56,7 @@ public class RecordVisitor {
 							try {
 								value = ByteBuffer.wrap(node.getBinaryValue());
 							} catch (IOException e) {
-								value = null;
+								continue;
 							}
 							break;
 						case STRING:

@@ -22,8 +22,22 @@ import org.apache.avro.mapred.Pair;
 
 import org.apache.hadoop.mapred.Reporter;
 
+/**
+ * An implementation of {@link AvroReducer} that aggregates all of the numeric
+ * fields in the {@link IndexedRecord} instances associated with the key by
+ * adding their values together, including support for aggregating values
+ * stored in sub-records, arrays, and maps defined within the record.
+ *
+ * @param <K> The data type of the key.
+ */
 public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, IndexedRecord>> {
 
+	/**
+	 * The implementation of the {@link RecordVisitor.Visitor} pattern that
+	 * handles the actual aggregation of numeric values from the input
+	 * records.
+	 *
+	 */
 	private static class RecordAggregator implements RecordVisitor.Visitor {
 
 		private final IndexedRecord aggregate;
