@@ -1,0 +1,2 @@
+Me playing around with the Avro APIs, trying to write a reducer that
+sums up all of the numeric fields in an avro type.
