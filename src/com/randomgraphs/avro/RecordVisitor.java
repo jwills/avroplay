@@ -8,6 +8,7 @@ import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.IndexedRecord;
+import org.apache.avro.util.Utf8;
 import org.codehaus.jackson.JsonNode;
 
 /**
@@ -27,11 +28,11 @@ public class RecordVisitor {
 		void visitDouble(Field field, Double value);
 		void visitBoolean(Field field, Boolean value);
 		void visitBytes(Field field, ByteBuffer value);
-		void visitString(Field field, String value);
+		void visitString(Field field, Utf8 value);
 		void visitRecord(Field field, IndexedRecord value);
 
 		void visitArray(Field field, Object[] value);
-		void visitMap(Field field, Map<String, Object> value);
+		void visitMap(Field field, Map<Utf8, Object> value);
 		void visitEnum(Field field, Enum<?> value);
 	}
 	
@@ -41,6 +42,7 @@ public class RecordVisitor {
 		if (schema.getType() == Schema.Type.RECORD) {
 			for (Field field : schema.getFields()) {
 				Object value = record.get(field.pos());
+				//TODO: Is handling this case even necessary right now?
 				if (value == null) {
 					if (field.defaultValue() != null) {
 						JsonNode node = field.defaultValue();
@@ -89,13 +91,13 @@ public class RecordVisitor {
 					visitor.visitBytes(field, (ByteBuffer) value);
 					break;
 				case STRING:
-					visitor.visitString(field, (String) value);
+					visitor.visitString(field, (Utf8) value);
 					break;
 				case ARRAY:
 					visitor.visitArray(field, (Object[]) value);
 					break;
 				case MAP:
-					visitor.visitMap(field, (Map<String, Object>) value);
+					visitor.visitMap(field, (Map<Utf8, Object>) value);
 					break;
 				case ENUM:
 					visitor.visitEnum(field, (Enum<?>) value);

@@ -14,7 +14,7 @@ import org.codehaus.jackson.node.LongNode;
 import org.codehaus.jackson.node.TextNode;
 
 /**
- * Utility class for defining an Avro {@link Schema} for a record dynamically.
+ * Helper class for defining an Avro record {@link Schema} dynamically.
  *
  */
 public class RecordSchemaBuilder {
@@ -72,10 +72,6 @@ public class RecordSchemaBuilder {
 		return addField(name, STRING_SCHEMA, new TextNode(defaultValue));
 	}
 	
-	public RecordSchemaBuilder optionalString(String name) {
-		return addField(name, STRING_SCHEMA, null);
-	}
-
 	public RecordSchemaBuilder requiredInt(String name) {
 		return requiredInt(name, 0);
 	}
@@ -84,20 +80,12 @@ public class RecordSchemaBuilder {
 		return addField(name, INT_SCHEMA, new IntNode(defaultValue));
 	}
 
-	public RecordSchemaBuilder optionalInt(String name) {
-		return addField(name, INT_SCHEMA, null);
-	}
-	
 	public RecordSchemaBuilder requiredLong(String name) {
 		return requiredLong(name, 0L);
 	}
 
 	public RecordSchemaBuilder requiredLong(String name, long defaultValue) {
 		return addField(name, LONG_SCHEMA, new LongNode(defaultValue));
-	}
-	
-	public RecordSchemaBuilder optionalLong(String name) {
-		return addField(name, LONG_SCHEMA, null);
 	}
 	
 	public RecordSchemaBuilder requiredFloat(String name) {
@@ -108,20 +96,12 @@ public class RecordSchemaBuilder {
 		return addField(name, FLOAT_SCHEMA, new DoubleNode(defaultValue));
 	}
 
-	public RecordSchemaBuilder optionalFloat(String name) {
-		return addField(name, FLOAT_SCHEMA, null);
-	}
-
 	public RecordSchemaBuilder requiredDouble(String name) {
 		return requiredDouble(name, 0.0);
 	}
 	
 	public RecordSchemaBuilder requiredDouble(String name, double defaultValue) {
 		return addField(name, DOUBLE_SCHEMA, new DoubleNode(defaultValue));
-	}
-
-	public RecordSchemaBuilder optionalDouble(String name) {
-		return addField(name, DOUBLE_SCHEMA, null);
 	}
 
 	public RecordSchemaBuilder map(String name, Schema valueSchema) {
@@ -137,7 +117,7 @@ public class RecordSchemaBuilder {
 			Schema schema = Schema.createRecord(recordName, doc, namespace, isError);
 			schema.setFields(fields);
 			return schema;
-		} else {
+		} else { // Create an anonymous record
 			return Schema.createRecord(fields);
 		}
 	}

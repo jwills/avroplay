@@ -1,6 +1,10 @@
 package com.randomgraphs.avro;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 import java.util.ArrayList;
@@ -14,11 +18,19 @@ import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.Schema.Type;
+import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.file.DataFileStream;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.IndexedRecord;
+import org.apache.avro.io.DatumReader;
+import org.apache.avro.io.DatumWriter;
 import org.apache.avro.mapred.AvroCollector;
 import org.apache.avro.mapred.AvroReducer;
 import org.apache.avro.mapred.Pair;
+import org.apache.avro.util.Utf8;
+
 
 import org.apache.hadoop.mapred.Reporter;
 
@@ -112,7 +124,7 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 		}
 
 		@Override
-		public void visitString(Field field, String value) {
+		public void visitString(Field field, Utf8 value) {
 			throw new UnsupportedOperationException();
 		}
 
@@ -124,7 +136,7 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 			}
 			RecordAggregator ra = new RecordAggregator(current);
 			RecordVisitor.visit(value, ra);
-			aggregate.put(field.pos(), current);
+			aggregate.put(field.pos(), ra.getValue());
 		}
 
 		@Override
@@ -142,15 +154,15 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public void visitMap(Field field, Map<String, Object> value) {
+		public void visitMap(Field field, Map<Utf8, Object> value) {
 			int pos = field.pos();
-			Map<String, Object> current = (Map<String, Object>) aggregate.get(pos);
+			Map<Utf8, Object> current = (Map<Utf8, Object>) aggregate.get(pos);
 			if (current == null) {
-				current = new HashMap<String, Object>();
+				current = new HashMap<Utf8, Object>();
 			}
-			Set<String> keys = new HashSet<String>(current.keySet());
+			Set<Utf8> keys = new HashSet<Utf8>(current.keySet());
 			keys.addAll(value.keySet());
-			for (String key : keys) {
+			for (Utf8 key : keys) {
 				Number currentValue = (Number) current.get(key);
 				Number valueValue = (Number) value.get(key);
 				current.put(key, add(currentValue, valueValue));
@@ -187,38 +199,57 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 	
 	public static void main(String[] args) throws Exception {
 		// Dynamically define a schema in Java...
-		Schema schema = new RecordSchemaBuilder()
-			.requiredInt("foo", 2)
+		Schema schema = new RecordSchemaBuilder("MySchema")
+			.requiredInt("foo")
 			.requiredFloat("bar")
-			.optionalDouble("baz")
-			.optionalLong("biz")
+			.requiredLong("biz")
 			.map("subkey", Schema.create(Type.INT))
 			.build();
 		
-		// Create a couple of instantiations of the schema...
-		List<IndexedRecord> records = new ArrayList<IndexedRecord>();
+		File recordFile = new File("testrecs");
+		DatumWriter<IndexedRecord> writer = new GenericDatumWriter<IndexedRecord>();
+		DataFileWriter<IndexedRecord> fileWriter = new DataFileWriter<IndexedRecord>(writer);
+		fileWriter.create(schema, recordFile);
+
+		// Create a couple of instantiations of the schema and write them out
 		GenericData.Record record = new GenericData.Record(schema);
 		record.put("foo", 12);
 		record.put("bar", 17.29f);
+		record.put("biz", 0L);
 		Map<String, Object> secondaryKeys = new HashMap<String, Object>();
 		secondaryKeys.put("k1", 12);
 		secondaryKeys.put("k2", 27);
 		record.put("subkey", secondaryKeys);
-		records.add(record);
+		fileWriter.append(record);
 
 		record = new GenericData.Record(schema);
+		record.put("foo", 2);
 		record.put("bar", 1.0f);
-		record.put("baz", 16.2);
+		record.put("biz", 1L);
 		secondaryKeys = new HashMap<String, Object>();
 		secondaryKeys.put("k1", 14);
 		secondaryKeys.put("k3", 7);
 		record.put("subkey", secondaryKeys);
-		records.add(record);
+		fileWriter.append(record);
+		fileWriter.close();
+		
+		// Read everything back in
+		List<IndexedRecord> records = new ArrayList<IndexedRecord>();
+		DatumReader<IndexedRecord> reader = new GenericDatumReader<IndexedRecord>(schema);
+		InputStream in = new BufferedInputStream(new FileInputStream(recordFile));
+		DataFileStream<IndexedRecord> stream = new DataFileStream<IndexedRecord>(in, reader);
+		for (IndexedRecord r : stream)
+			records.add(r);
 
 		// ...and look at the output of reducing them.
-		AvroCollector<Pair<String, IndexedRecord>> collector =
-			new SystemOutAvroCollector<Pair<String, IndexedRecord>>();
-		SumReducer<String> reducer = new SumReducer<String>();		
-		reducer.reduce("test", records, collector, null);
+		AvroCollector<Pair<Long, IndexedRecord>> collector =
+			new SystemOutAvroCollector<Pair<Long, IndexedRecord>>();
+		SumReducer<Long> reducer = new SumReducer<Long>();		
+		reducer.reduce(1729L, records, collector, null);
+		// Output is:
+		// {"key": 1729, "value": {"foo": 14, "bar": 18.29, "biz": 1, "subkey": {"k3": 7, "k1": 26, "k2": 27}}}
+
+		// cleanup
+		recordFile.delete();
 	}
 }
