@@ -24,6 +24,7 @@ public class RecordSchemaBuilder {
 	private static final Schema LONG_SCHEMA = Schema.create(Type.LONG);
 	private static final Schema FLOAT_SCHEMA = Schema.create(Type.FLOAT);
 	private static final Schema DOUBLE_SCHEMA = Schema.create(Type.DOUBLE);
+	private static final Schema NULL_SCHEMA = Schema.create(Type.NULL);
 
 	private final String recordName;
 	private String namespace;
@@ -65,43 +66,63 @@ public class RecordSchemaBuilder {
 	}
 
 	public RecordSchemaBuilder requiredString(String name) {
-		return requiredString(name, "");
-	}
-
-	public RecordSchemaBuilder requiredString(String name, String defaultValue) {
-		return addField(name, STRING_SCHEMA, new TextNode(defaultValue));
+		return addField(name, STRING_SCHEMA, null);
 	}
 	
-	public RecordSchemaBuilder requiredInt(String name) {
-		return requiredInt(name, 0);
+	public RecordSchemaBuilder optionalString(String name) {
+		return optionalString(name, "");
+	}
+	
+	public RecordSchemaBuilder optionalString(String name, String defaultValue) {
+		return addOptionalField(name, STRING_SCHEMA, new TextNode(defaultValue));
 	}
 
-	public RecordSchemaBuilder requiredInt(String name, int defaultValue) {
-		return addField(name, INT_SCHEMA, new IntNode(defaultValue));
+	public RecordSchemaBuilder requiredInt(String name) {
+		return addField(name, INT_SCHEMA, null);
+	}
+
+	public RecordSchemaBuilder optionalInt(String name) {
+		return optionalInt(name, 0);
+	}
+
+	public RecordSchemaBuilder optionalInt(String name, int defaultValue) {
+		return addOptionalField(name, INT_SCHEMA, new IntNode(defaultValue));
 	}
 
 	public RecordSchemaBuilder requiredLong(String name) {
-		return requiredLong(name, 0L);
+		return addField(name, LONG_SCHEMA, null);
 	}
 
-	public RecordSchemaBuilder requiredLong(String name, long defaultValue) {
-		return addField(name, LONG_SCHEMA, new LongNode(defaultValue));
+	public RecordSchemaBuilder optionalLong(String name) {
+		return optionalLong(name, 0);
 	}
-	
+
+	public RecordSchemaBuilder optionalLong(String name, long defaultValue) {
+		return addOptionalField(name, LONG_SCHEMA, new LongNode(defaultValue));
+	}
+
 	public RecordSchemaBuilder requiredFloat(String name) {
-		return requiredFloat(name, 0.0f);
+		return addField(name, FLOAT_SCHEMA, null);
+	}
+
+	public RecordSchemaBuilder optionalFloat(String name) {
+		return optionalFloat(name, 0.0f);
 	}
 	
-	public RecordSchemaBuilder requiredFloat(String name, float defaultValue) {
-		return addField(name, FLOAT_SCHEMA, new DoubleNode(defaultValue));
+	public RecordSchemaBuilder optionalFloat(String name, float defaultValue) {
+		return addOptionalField(name, FLOAT_SCHEMA, new DoubleNode(defaultValue));
 	}
 
 	public RecordSchemaBuilder requiredDouble(String name) {
-		return requiredDouble(name, 0.0);
+		return addField(name, DOUBLE_SCHEMA, null);
+	}
+
+	public RecordSchemaBuilder optionalDouble(String name) {
+		return optionalDouble(name, 0.0);
 	}
 	
-	public RecordSchemaBuilder requiredDouble(String name, double defaultValue) {
-		return addField(name, DOUBLE_SCHEMA, new DoubleNode(defaultValue));
+	public RecordSchemaBuilder optionalDouble(String name, double defaultValue) {
+		return addOptionalField(name, DOUBLE_SCHEMA, new DoubleNode(defaultValue));
 	}
 
 	public RecordSchemaBuilder map(String name, Schema valueSchema) {
@@ -124,6 +145,14 @@ public class RecordSchemaBuilder {
 
 	private RecordSchemaBuilder addField(String name, Schema schema, JsonNode defaultValue) {
 		fields.add(new Field(name, schema, "", defaultValue));
+		return this;
+	}
+	
+	private RecordSchemaBuilder addOptionalField(String name, Schema schema, JsonNode defaultValue) {
+		List<Schema> types = new ArrayList<Schema>();
+		types.add(schema);
+		types.add(NULL_SCHEMA);
+		fields.add(new Field(name, Schema.createUnion(types), "", defaultValue));
 		return this;
 	}
 }

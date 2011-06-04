@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -124,7 +125,7 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 		}
 
 		@Override
-		public void visitString(Field field, Utf8 value) {
+		public void visitString(Field field, CharSequence value) {
 			throw new UnsupportedOperationException();
 		}
 
@@ -140,21 +141,23 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 		}
 
 		@Override
-		public void visitArray(Field field, Object[] value) {
+		@SuppressWarnings("unchecked")
+		public void visitArray(Field field, Collection<?> value) {
 			int pos = field.pos();
-			Object[] current = (Object[]) aggregate.get(pos);
+			List<Number> current = (List<Number>) aggregate.get(pos);
 			if (current == null) {
-				current = new Object[value.length];
+				current = new ArrayList<Number>(value.size());
 			}
-			for (int i = 0; i < current.length; i++) {
-				current[i] = add((Number) current[i], (Number) value[i]);
+			int i = 0;
+			for (Object v : value) {
+				current.set(i, add(current.get(i), (Number) v));
 			}
 			aggregate.put(pos, current);
 		}
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public void visitMap(Field field, Map<Utf8, Object> value) {
+		public void visitMap(Field field, Map<Utf8, ?> value) {
 			int pos = field.pos();
 			Map<Utf8, Object> current = (Map<Utf8, Object>) aggregate.get(pos);
 			if (current == null) {
@@ -171,7 +174,7 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 		}
 
 		@Override
-		public void visitEnum(Field field, Enum<?> value) {
+		public void visitEnum(Field field, Object value) {
 			throw new UnsupportedOperationException();
 		}	
 	}
@@ -202,7 +205,7 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 		Schema schema = new RecordSchemaBuilder("MySchema")
 			.requiredInt("foo")
 			.requiredFloat("bar")
-			.requiredLong("biz")
+			.optionalLong("biz")
 			.map("subkey", Schema.create(Type.INT))
 			.build();
 		
@@ -215,7 +218,6 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 		GenericData.Record record = new GenericData.Record(schema);
 		record.put("foo", 12);
 		record.put("bar", 17.29f);
-		record.put("biz", 0L);
 		Map<String, Object> secondaryKeys = new HashMap<String, Object>();
 		secondaryKeys.put("k1", 12);
 		secondaryKeys.put("k2", 27);
@@ -225,7 +227,7 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 		record = new GenericData.Record(schema);
 		record.put("foo", 2);
 		record.put("bar", 1.0f);
-		record.put("biz", 1L);
+		record.put("biz", 10L);
 		secondaryKeys = new HashMap<String, Object>();
 		secondaryKeys.put("k1", 14);
 		secondaryKeys.put("k3", 7);

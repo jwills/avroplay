@@ -3,10 +3,13 @@ package com.randomgraphs.avro;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
+import org.apache.avro.Schema.Type;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.util.Utf8;
 import org.codehaus.jackson.JsonNode;
@@ -28,12 +31,12 @@ public class RecordVisitor {
 		void visitDouble(Field field, Double value);
 		void visitBoolean(Field field, Boolean value);
 		void visitBytes(Field field, ByteBuffer value);
-		void visitString(Field field, Utf8 value);
+		void visitString(Field field, CharSequence value);
 		void visitRecord(Field field, IndexedRecord value);
 
-		void visitArray(Field field, Object[] value);
-		void visitMap(Field field, Map<Utf8, Object> value);
-		void visitEnum(Field field, Enum<?> value);
+		void visitArray(Field field, Collection<?> value);
+		void visitMap(Field field, Map<Utf8, ?> value);
+		void visitEnum(Field field, Object value);
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -41,12 +44,23 @@ public class RecordVisitor {
 		Schema schema = record.getSchema();
 		if (schema.getType() == Schema.Type.RECORD) {
 			for (Field field : schema.getFields()) {
+				Schema fieldSchema = field.schema();
+				// Special handling for unions
+				if (fieldSchema.getType() == Type.UNION) {
+					List<Schema> unionTypes = fieldSchema.getTypes();
+					if (unionTypes.size() == 2) {
+						if (unionTypes.get(0).getType() == Type.NULL) {
+							fieldSchema = unionTypes.get(1);
+						} else {
+							fieldSchema = unionTypes.get(0);
+						}
+					}
+				}
 				Object value = record.get(field.pos());
-				//TODO: Is handling this case even necessary right now?
 				if (value == null) {
 					if (field.defaultValue() != null) {
 						JsonNode node = field.defaultValue();
-						switch (field.schema().getType()) {
+						switch (fieldSchema.getType()) {
 						case INT:
 						case LONG:
 						case FLOAT:
@@ -71,7 +85,7 @@ public class RecordVisitor {
 						continue;
 					}
 				}
-				switch (field.schema().getType()) {
+				switch (fieldSchema.getType()) {
 				case INT:
 					visitor.visitInt(field, (Integer) value);
 					break;
@@ -91,16 +105,16 @@ public class RecordVisitor {
 					visitor.visitBytes(field, (ByteBuffer) value);
 					break;
 				case STRING:
-					visitor.visitString(field, (Utf8) value);
+					visitor.visitString(field, (CharSequence) value);
 					break;
 				case ARRAY:
-					visitor.visitArray(field, (Object[]) value);
+					visitor.visitArray(field, (Collection<?>) value);
 					break;
 				case MAP:
-					visitor.visitMap(field, (Map<Utf8, Object>) value);
+					visitor.visitMap(field, (Map<Utf8, ?>) value);
 					break;
 				case ENUM:
-					visitor.visitEnum(field, (Enum<?>) value);
+					visitor.visitEnum(field, value);
 					break;
 				case RECORD:
 					visitor.visitRecord(field, (IndexedRecord) value);
