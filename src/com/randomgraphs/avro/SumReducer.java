@@ -249,7 +249,7 @@ public class SumReducer<K> extends AvroReducer<K, IndexedRecord, Pair<K, Indexed
 		SumReducer<Long> reducer = new SumReducer<Long>();		
 		reducer.reduce(1729L, records, collector, null);
 		// Output is:
-		// {"key": 1729, "value": {"foo": 14, "bar": 18.29, "biz": 1, "subkey": {"k3": 7, "k1": 26, "k2": 27}}}
+		// {"key": 1729, "value": {"foo": 14, "bar": 18.29, "biz": 10, "subkey": {"k3": 7, "k1": 26, "k2": 27}}}
 
 		// cleanup
 		recordFile.delete();
